@@ -3,13 +3,13 @@
 
 %% API
 -export([
-	start/0,
-	on_request/1,
-	get/2, get/3,
-	set/3,
-	expire/1,
-	touch/1
-]).
+		start/0,
+		on_request/1,
+		get/2, get/3,
+		set/3,
+		expire/1,
+		touch/1
+	]).
 
 -behaviour(application).
 -export([start/2, stop/1]).
@@ -62,8 +62,7 @@ touch(Req) ->
 
 start(_StartType, _StartArgs) ->
 	{ok, Sup} = supervisor:start_link({local, ?MODULE}, ?MODULE, []),
-	{ok, Storage} = ?CONFIG(storage),
-	supervisor:start_child(Sup, ?CHILD(Storage, worker)),
+	supervisor:start_child(Sup, ?CHILD(?CONFIG(storage), worker)),
 	{ok, Sup}.
 
 stop(_State) ->
@@ -86,51 +85,61 @@ init([]) ->
 %% ===================================================================
 
 get_session(Req) ->
-	{ok, Cookie_name} = ?CONFIG(cookie_name),
-	{SID, Req2} = case cowboy_req:meta(cookie, Req) of
-		{undefined, Req3} ->
-			cowboy_req:cookie(Cookie_name, Req3);
+	Cookie_name = ?CONFIG(cookie_name),
+	SID = case cowboy_req:meta(Cookie_name, Req) of
+		undefined ->
+			case cowboy_req:parse_cookies(Req) of
+				[] ->
+					undefined;
+				Cookies ->
+					case proplists:get_value(Cookie_name, Cookies) of
+						undefined ->
+							undefined;
+						SessionId ->
+							SessionId
+					end
+			end;
 		Result ->
 			Result
 	end,
 	case SID of
 		undefined ->
-			create_session(Req2);
+			create_session(Req);
 		_ ->
 			case gproc:lookup_local_name({cowboy_session, SID}) of
 				undefined ->
-					create_session(Req2);
+					create_session(Req);
 				Pid ->
 					cowboy_session_server:touch(Pid),
-					{Pid, Req2}
+					{Pid, Req}
 			end
 	end.
 
 clear_cookie(Req) ->
-	{ok, Cookie_name} = ?CONFIG(cookie_name),
-	{ok, Cookie_options} = ?CONFIG(cookie_options),
-	Req2 = cowboy_req:set_meta(cookie, undefined, Req),
+	Cookie_name = ?CONFIG(cookie_name),
+	Cookie_options = ?CONFIG(cookie_options),
+	Req2 = cowboy_req:set_meta(Cookie_name, undefined, Req),
 	cowboy_req:set_resp_cookie(
 		Cookie_name,
 		<<"deleted">>,
-		[{max_age, 0} | Cookie_options],
+		[{set_age, 0}, {local_time, {{1970, 1, 1}, {0, 0, 0}}} | Cookie_options],
 		Req2).
 
 create_session(Req) ->
 	%% The cookie value cannot contain any of the following characters:
 	%%   ,; \t\r\n\013\014
 	SID = list_to_binary(uuid:to_string(uuid:v4())),
-	{ok, Cookie_name} = ?CONFIG(cookie_name),
-	{ok, Cookie_options} = ?CONFIG(cookie_options),
-	{ok, Storage} = ?CONFIG(storage),
-	{ok, Expire} = ?CONFIG(expire),
+	Cookie_name = ?CONFIG(cookie_name),
+	Cookie_options = ?CONFIG(cookie_options),
+	Storage = ?CONFIG(storage),
+	Expire = ?CONFIG(expire),
 	{ok, Pid} = supervisor:start_child(cowboy_session_server_sup, [[
-		{sid, SID},
-		{storage, Storage},
-		{expire, Expire}
-	]]),
+				{sid, SID},
+				{storage, Storage},
+				{expire, Expire}
+			]]),
 	Req2 = cowboy_req:set_resp_cookie(Cookie_name, SID, Cookie_options, Req),
-	Req3 = cowboy_req:set_meta(cookie, SID, Req2),
+	Req3 = cowboy_req:set_meta(Cookie_name, SID, Req2),
 	{Pid, Req3}.
 
 ensure_started([]) -> ok;

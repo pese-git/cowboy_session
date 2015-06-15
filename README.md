@@ -26,9 +26,8 @@ If you want session to be started for each request then use function `cowboy_ses
 ```erlang
 cowboy:start_http(http_listener, Nba, [{port, Port}], [
 		{env, [
-			{dispatch, Dispatch}
-		]},
-		{onrequest, fun cowboy_session:on_request/1} %% < setting on_request callback
+			{dispatch, Dispatch} | [cowboy_session_middleware,cowboy_router,cowboy_handler]
+		]}
 	]).
 ```
 otherwise first call to `cowboy_session:set/3` or `cowboy_session:get/2/3` will initialize session

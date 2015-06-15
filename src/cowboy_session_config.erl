@@ -3,29 +3,29 @@
 
 %% API
 -export([
-	start_link/0,
-	set/1, set/2,
-	get/1, get/2,
-	update_storage/1
-]).
+		start_link/0,
+		set/1, set/2,
+		get/1, get/2,
+		update_storage/1
+	]).
 
 %% Gen_server behaviour
 -behaviour(gen_server).
 -export([
-	init/1,
-	handle_call/3,
-	handle_cast/2,
-	handle_info/2,
-	terminate/2,
-	code_change/3
-]).
+		init/1,
+		handle_call/3,
+		handle_cast/2,
+		handle_info/2,
+		terminate/2,
+		code_change/3
+	]).
 
 -define(DEFAULT, [
-	{cookie_name, <<"session">>},
-	{cookie_options, [{path, <<"/">>}]},
-	{expire, 1440},
-	{storage, cowboy_session_storage_ets}
-]).
+		{cookie_name, <<"session">>},
+		{cookie_options, [{path, <<"/">>}]},
+		{expire, 1440},
+		{storage, cowboy_session_storage_ets}
+	]).
 
 %% ===================================================================
 %% API functions
@@ -47,15 +47,10 @@ update_storage(Value) ->
 	end.
 
 get(Key) ->
-	gen_server:call(?MODULE, {get, Key}).
+	get(Key, undefined).
 
 get(Key, Default) ->
-	case ?MODULE:get(Key) of
-		{ok, Value} ->
-			{ok, Value};
-		{error, not_found} ->
-			{ok, Default}
-	end.
+	gen_server:call(?MODULE, {get, Key, Default}).
 
 %% ===================================================================
 %% Gen_server callbacks
@@ -64,13 +59,12 @@ get(Key, Default) ->
 init([]) ->
 	{ok, ?DEFAULT}.
 
-handle_call({get, Key}, _From, State) ->
-	case lists:keyfind(Key, 1, State) of
-		{Key, Value} ->
-			{reply, {ok, Value}, State};
-		false ->
-			{reply, {error, not_found}, State}
-	end;
+handle_call({get, Key, Default}, _From, State) ->
+	Result = case lists:keyfind(Key, 1, State) of
+		{_, Value} -> Value;
+		_ -> Default
+	end,
+	{reply, Result, State};
 handle_call(_Request, _From, State) ->
 	{reply, ignored, State}.
 
