@@ -3,29 +3,29 @@
 
 %% API
 -export([
-		start_link/0,
-		set/1, set/2,
-		get/1, get/2,
-		update_storage/1
-	]).
+	start_link/0,
+	set/1, set/2,
+	get/1, get/2,
+	update_storage/1
+]).
 
 %% Gen_server behaviour
 -behaviour(gen_server).
 -export([
-		init/1,
-		handle_call/3,
-		handle_cast/2,
-		handle_info/2,
-		terminate/2,
-		code_change/3
-	]).
+	init/1,
+	handle_call/3,
+	handle_cast/2,
+	handle_info/2,
+	terminate/2,
+	code_change/3
+]).
 
 -define(DEFAULT, [
-		{cookie_name, <<"session">>},
-		{cookie_options, [{path, <<"/">>}]},
-		{expire, 1440},
-		{storage, cowboy_session_storage_ets}
-	]).
+	{cookie_name, <<"session">>},
+	{cookie_options, [{path, <<"/">>}]},
+	{expire, 1440},
+	{storage, cowboy_session_storage_ets}
+]).
 
 %% ===================================================================
 %% API functions
