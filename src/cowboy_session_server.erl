@@ -130,5 +130,5 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 seconds_now() ->
-    {M, S, _} = erlang:now(),
+    {M, S, _} = erlang:timestamp(),
     M * 1000000 + S.
